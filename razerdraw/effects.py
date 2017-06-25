@@ -35,10 +35,10 @@ class Effect:
             time.sleep(self.delay)
 
 
-def _effect(f_or_name: (str, Generator[Frame, None, None])):
+def _effect(f_or_name: (str, Generator[Frame, None, None]), delay=0.05):
     def decorate(f):
         name = f_or_name if isinstance(f_or_name, str) else f.__name__
-        return Effect(name, f)
+        return Effect(name, f, delay)
 
     if isinstance(f_or_name, str):
         return decorate
@@ -83,8 +83,10 @@ def wave_down_random():
     yield from wave_down_base(random_color_generator())
 
 
-def pixel_base(pixel_cb):
+def pixel_base(pixel_cb, before_frame_cb=None):
     while True:
+        if before_frame_cb:
+            before_frame_cb()
         frame = Frame()
         for y in range(6):
             row = []
@@ -97,6 +99,31 @@ def pixel_base(pixel_cb):
 @_effect('pixelRandom')
 def pixel_random():
     yield from pixel_base(lambda x, y: (random.randrange(256), random.randrange(256), random.randrange(256)))
+
+
+@_effect('waveDiagonalDown', delay=0.1)
+def wave_diagonal_down():
+    red = (255, 0, 0)
+    green = (0, 255, 0)
+    blue = (0, 0, 255)
+    orange = (255, 100, 0)
+    yellow = (255, 255, 0)
+    white = (255, 255, 255)
+    black = (0, 0, 0)
+
+    colors = cycle([red, green, blue, orange, yellow, white, black])
+
+    color_cache = [next(colors) for _ in range(FRAME_WIDTH + 6)]
+
+    def setup_diagonal():
+        color_cache.insert(0, next(colors))
+        color_cache.pop()
+
+    def diagonal(x, y):
+        color_index = x + y
+        return color_cache[color_index]
+
+    yield from pixel_base(diagonal, setup_diagonal)
 
 
 __all__ = ['effects']
