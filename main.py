@@ -5,6 +5,8 @@ from razerdraw import Frame
 from razerdraw.effects import effects
 from razerdraw.rows import get_rows
 
+import sys
+
 SYS_DEVICES = Path('/sys/bus/hid/drivers/razerkbd/')
 
 
@@ -51,6 +53,9 @@ def main():
     effect.set_defaults(func=play_effect)
 
     args = parser.parse_args()
+    if not hasattr(args, 'func'):
+        parser.print_help()
+        sys.exit(1)
     args.func(args)
 
 

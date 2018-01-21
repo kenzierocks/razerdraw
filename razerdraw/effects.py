@@ -46,12 +46,13 @@ def _effect(f_or_name: (str, Generator[Frame, None, None]), delay=0.05):
 
 
 FRAME_WIDTH = 0x10
+FRAME_HEIGHT = 6
 
 
 def wave_down_base(color_generator):
     color_cache = []
     while True:
-        while len(color_cache) < 7:
+        while len(color_cache) <= FRAME_HEIGHT:
             color_cache.insert(0, next(color_generator))
 
         # pop last
@@ -88,7 +89,7 @@ def pixel_base(pixel_cb, before_frame_cb=None):
         if before_frame_cb:
             before_frame_cb()
         frame = Frame()
-        for y in range(6):
+        for y in range(FRAME_HEIGHT):
             row = []
             for x in range(FRAME_WIDTH):
                 row.append(pixel_cb(x, y))
@@ -113,7 +114,7 @@ def wave_diagonal_down():
 
     colors = cycle([red, green, blue, orange, yellow, white, black])
 
-    color_cache = [next(colors) for _ in range(FRAME_WIDTH + 6)]
+    color_cache = [next(colors) for _ in range(FRAME_WIDTH + FRAME_HEIGHT)]
 
     def setup_diagonal():
         color_cache.insert(0, next(colors))
@@ -124,6 +125,49 @@ def wave_diagonal_down():
         return color_cache[color_index]
 
     yield from pixel_base(diagonal, setup_diagonal)
+
+
+@_effect('rain')
+def rain():
+    def infinite_green():
+        while True:
+            yield 0, 255, 0
+
+    yield from rain_gen(infinite_green())
+
+
+@_effect('rainRandom')
+def rain():
+    def randomness():
+        while True:
+            yield random.randrange(256), random.randrange(256), random.randrange(256)
+
+    yield from rain_gen(randomness())
+
+
+def rain_gen(color_gen):
+    elements = []
+
+    def tick_rain():
+        for i in range(len(elements) - 1, -1, -1):
+            e = elements[i]
+            e[1] += 1
+            if e[1] >= FRAME_HEIGHT:
+                del elements[i]
+        if random.randrange(100) > 25:
+            elements.append([random.randrange(FRAME_WIDTH), 0, next(color_gen)])
+
+    def render(x, y):
+        gen = filter(lambda e: (e[0] == x and e[1] == y), elements)
+        try:
+            first = next(gen)
+        except StopIteration:
+            first = None
+        if first is not None:
+            return first[2]
+        return 0, 0, 0
+
+    yield from pixel_base(render, tick_rain)
 
 
 __all__ = ['effects']
