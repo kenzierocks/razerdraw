@@ -1,4 +1,8 @@
+from collections import defaultdict
 from typing import Dict, List, Generator
+
+from math import sqrt
+
 from . import Frame
 from pathlib import Path
 from .rows import get_rows
@@ -87,7 +91,9 @@ def wave_down_random():
 def pixel_base(pixel_cb, before_frame_cb=None):
     while True:
         if before_frame_cb:
-            before_frame_cb()
+            do_exit = before_frame_cb()
+            if do_exit:
+                return
         frame = Frame()
         for y in range(FRAME_HEIGHT):
             row = []
@@ -100,6 +106,29 @@ def pixel_base(pixel_cb, before_frame_cb=None):
 @_effect('pixelRandom')
 def pixel_random():
     yield from pixel_base(lambda x, y: (random.randrange(256), random.randrange(256), random.randrange(256)))
+
+
+@_effect('pixelRandomSticky')
+def pixel_random():
+    pixel_field = defaultdict(lambda: defaultdict(lambda: (0, 0, 0)))
+    sticky = defaultdict(lambda: defaultdict(lambda: False))
+
+    def tick_field():
+        changed = False
+        for x in range(FRAME_WIDTH):
+            for y in range(FRAME_HEIGHT):
+                if not sticky[x][y]:
+                    changed = True
+                    pixel_field[x][y] = (random.randrange(256), random.randrange(256), random.randrange(256))
+                    if random.randrange(100) > 90:
+                        sticky[x][y] = True
+        if not changed:
+            return True
+
+    def render(x, y):
+        return pixel_field[x][y]
+
+    yield from pixel_base(render, tick_field)
 
 
 @_effect('waveDiagonalDown', delay=0.1)
@@ -145,19 +174,51 @@ def rain():
     yield from rain_gen(randomness())
 
 
+def merge_colors(a, b):
+    ar, ag, ab = a
+    br, bg, bb = b
+    weight = 1
+    fr = sqrt(((ar ** 2) * weight + br ** 2) / (1 + weight))
+    fg = sqrt(((ar ** 2) * weight + bg ** 2) / (1 + weight))
+    fb = sqrt(((ar ** 2) * weight + bb ** 2) / (1 + weight))
+    return int(fr), int(fg), int(fb)
+
+
 def rain_gen(color_gen):
     elements = []
+    pool = None
+    pool_row_size = 50
+    pool_count = 0
+    draining = False
 
     def tick_rain():
+        nonlocal pool, pool_count, draining
         for i in range(len(elements) - 1, -1, -1):
             e = elements[i]
             e[1] += 1
             if e[1] >= FRAME_HEIGHT:
+                if draining:
+                    pool_count -= 10
+                else:
+                    pool_count += 1
+                if pool is None:
+                    pool = e[2]
+                else:
+                    pool = merge_colors(pool, e[2])
                 del elements[i]
         if random.randrange(100) > 25:
             elements.append([random.randrange(FRAME_WIDTH), 0, next(color_gen)])
 
     def render(x, y):
+        nonlocal draining
+        pool_cutoff = pool_count // pool_row_size
+        y_cutoff = FRAME_HEIGHT - pool_cutoff - 1
+        if y_cutoff < 0:
+            draining = True
+        if pool_count == 0:
+            draining = False
+        if y_cutoff < y:
+            return pool
         gen = filter(lambda e: (e[0] == x and e[1] == y), elements)
         try:
             first = next(gen)
