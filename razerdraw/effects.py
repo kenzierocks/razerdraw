@@ -114,16 +114,12 @@ def pixel_random():
     sticky = defaultdict(lambda: defaultdict(lambda: False))
 
     def tick_field():
-        changed = False
         for x in range(FRAME_WIDTH):
             for y in range(FRAME_HEIGHT):
                 if not sticky[x][y]:
-                    changed = True
                     pixel_field[x][y] = (random.randrange(256), random.randrange(256), random.randrange(256))
                     if random.randrange(100) > 90:
                         sticky[x][y] = True
-        if not changed:
-            return True
 
     def render(x, y):
         return pixel_field[x][y]
