@@ -181,13 +181,13 @@ def merge_colors(a, b):
 
 def rain_gen(color_gen):
     elements = []
-    pool = None
+    pool_color = None
     pool_row_size = 50
     pool_count = 0
     draining = False
 
     def tick_rain():
-        nonlocal pool, pool_count, draining
+        nonlocal pool_color, pool_count, draining
         for i in range(len(elements) - 1, -1, -1):
             e = elements[i]
             e[1] += 1
@@ -196,10 +196,10 @@ def rain_gen(color_gen):
                     pool_count -= 10
                 else:
                     pool_count += 1
-                if pool is None:
-                    pool = e[2]
+                if pool_color is None:
+                    pool_color = e[2]
                 else:
-                    pool = merge_colors(pool, e[2])
+                    pool_color = merge_colors(pool_color, e[2])
                 del elements[i]
         if random.randrange(100) > 25:
             elements.append([random.randrange(FRAME_WIDTH), 0, next(color_gen)])
@@ -213,7 +213,7 @@ def rain_gen(color_gen):
         if pool_count == 0:
             draining = False
         if y_cutoff < y:
-            return pool
+            return pool_color
         gen = filter(lambda e: (e[0] == x and e[1] == y), elements)
         try:
             first = next(gen)
