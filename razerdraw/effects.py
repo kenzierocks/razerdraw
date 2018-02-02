@@ -40,13 +40,12 @@ class Effect:
 
 
 def _effect(f_or_name: (str, Generator[Frame, None, None]), delay=0.05):
-    def decorate(f):
-        name = f_or_name if isinstance(f_or_name, str) else f.__name__
+    def decorate(f, name=f_or_name):
         return Effect(name, f, delay)
 
     if isinstance(f_or_name, str):
         return decorate
-    return decorate(f_or_name)
+    return decorate(f_or_name, name=f_or_name.__name__)
 
 
 FRAME_WIDTH = 0x10
